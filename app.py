@@ -68,9 +68,15 @@ HTML_TEMPLATE = """
     </form>
     <h2>Messages</h2>
     <div id="submissions">
-        {% for submission in submissions %}
+        {% for submission in submissions|reverse %}
+            {# Compute original index of submission for deletion #}
+            {% set idx = submissions|length - loop.index0 - 1 %}
             <div class="submission">
                 <pre><code>{{ submission }}</code></pre>
+                <form method="POST" action="/">
+                    <input type="hidden" name="delete_index" value="{{ idx }}">
+                    <button type="submit">Delete</button>
+                </form>
             </div>
         {% endfor %}
     </div>
@@ -124,6 +130,15 @@ def index():
         if request.form.get("clear"):
             submissions.clear()
             save_submissions()
+        # If delete button pressed, delete individual message
+        elif request.form.get("delete_index") is not None:
+            try:
+                idx = int(request.form.get("delete_index"))
+                if 0 <= idx < len(submissions):
+                    submissions.pop(idx)
+                    save_submissions()
+            except (ValueError, TypeError):
+                pass
         else:
             # Otherwise, handle new message submission
             message = request.form.get("message")
