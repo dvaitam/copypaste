@@ -1,0 +1,4 @@
+model_list:
+  - model_name: o3-mini
+    litellm_params:
+      model: openai/o3-mini
