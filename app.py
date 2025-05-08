@@ -54,7 +54,12 @@ HTML_TEMPLATE = """
         button:hover {
             background-color: #0056b3;
         }
-        .submission { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .submission { margin: 10px 0; padding: 10px; border: 1px solid #ccc; position: relative; }
+        .icon-button { background: none; border: none; cursor: pointer; padding: 5px; font-size: 1.2rem; color: inherit; }
+        .icon-button.copy { position: absolute; top: 10px; right: 40px; }
+        .icon-button.delete { position: absolute; top: 10px; right: 10px; }
+        .submission pre { margin-top: 30px; }
+        .icon-button:hover { background-color: transparent; }
     </style>
 </head>
 <body>
@@ -73,9 +78,9 @@ HTML_TEMPLATE = """
             {% set idx = submissions|length - loop.index0 - 1 %}
             <div class="submission">
                 <pre><code>{{ submission }}</code></pre>
-                <form method="POST" action="/">
+                <form method="POST" action="/" class="delete-form" style="margin:0;">
                     <input type="hidden" name="delete_index" value="{{ idx }}">
-                    <button type="submit">Delete</button>
+                    <button type="submit" class="icon-button delete" title="Delete">&#128465;</button>
                 </form>
             </div>
         {% endfor %}
@@ -98,20 +103,21 @@ HTML_TEMPLATE = """
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('pre > code').forEach(function(codeBlock) {
                 var button = document.createElement('button');
-                button.innerText = 'Copy';
-                button.style.margin = '5px';
+                button.className = 'icon-button copy';
+                button.title = 'Copy';
+                button.innerHTML = '&#128203;';
                 button.addEventListener('click', function() {
                     if (navigator.clipboard && navigator.clipboard.writeText) {
                         navigator.clipboard.writeText(codeBlock.innerText).then(function() {
-                            button.innerText = 'Copied!';
-                            setTimeout(function() { button.innerText = 'Copy'; }, 2000);
+                            button.innerHTML = '&#10003;';
+                            setTimeout(function() { button.innerHTML = '&#128203;'; }, 2000);
                         }).catch(function(err) {
                             console.error('Failed to copy text: ', err);
                         });
                     } else {
                         fallbackCopyTextToClipboard(codeBlock.innerText);
-                        button.innerText = 'Copied!';
-                        setTimeout(function() { button.innerText = 'Copy'; }, 2000);
+                        button.innerHTML = '&#10003;';
+                        setTimeout(function() { button.innerHTML = '&#128203;'; }, 2000);
                     }
                 });
                 var pre = codeBlock.parentNode;
