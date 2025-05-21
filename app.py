@@ -31,7 +31,7 @@ HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Simple Submission App</title>
+    <title>copy paste</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         textarea {
