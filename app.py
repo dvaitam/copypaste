@@ -4,7 +4,7 @@ import os
 import json
 
 app = Flask(__name__)
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # File to store submissions persistently
 DATA_FILE = "submissions.json"
