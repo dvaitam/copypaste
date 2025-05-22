@@ -1,10 +1,8 @@
 from flask import Flask, request, render_template_string
-from flask_socketio import SocketIO
 import os
 import json
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
 
 # File to store submissions persistently
 DATA_FILE = "submissions.json"
@@ -34,7 +32,6 @@ HTML_TEMPLATE = """
 <html>
 <head>
     <title>copy paste</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         textarea {
@@ -154,46 +151,6 @@ HTML_TEMPLATE = """
             document.querySelectorAll('#submissions .submission').forEach(function(submissionElement) {
                 attachCopyButtonFunctionality(submissionElement);
             });
-
-            var socket = io();
-            socket.on('new_message', function(data) {
-                var submissionsDiv = document.getElementById('submissions');
-                var newSubmissionDiv = document.createElement('div');
-                newSubmissionDiv.className = 'submission';
-
-                // Add message content
-                var pre = document.createElement('pre');
-                var code = document.createElement('code');
-                code.textContent = data.message;
-                pre.appendChild(code);
-                newSubmissionDiv.appendChild(pre);
-
-                // Add delete form and button
-                var deleteForm = document.createElement('form');
-                deleteForm.method = 'POST';
-                deleteForm.action = '/';
-                deleteForm.className = 'delete-form';
-                deleteForm.style.margin = '0';
-
-                var deleteIndexInput = document.createElement('input');
-                deleteIndexInput.type = 'hidden';
-                deleteIndexInput.name = 'delete_index';
-                deleteIndexInput.value = data.id; // Use the id from the socket event
-                deleteForm.appendChild(deleteIndexInput);
-
-                var deleteButton = document.createElement('button');
-                deleteButton.type = 'submit';
-                deleteButton.className = 'icon-button delete';
-                deleteButton.title = 'Delete';
-                deleteButton.innerHTML = '&#128465;'; // Trash can icon
-                deleteForm.appendChild(deleteButton);
-                newSubmissionDiv.appendChild(deleteForm);
-
-                // Add copy button functionality
-                attachCopyButtonFunctionality(newSubmissionDiv);
-
-                submissionsDiv.insertBefore(newSubmissionDiv, submissionsDiv.firstChild);
-            });
         });
     </script>
 </body>
@@ -222,8 +179,7 @@ def index():
             if message:
                 submissions.append(message)
                 save_submissions()
-                socketio.emit('new_message', {'message': message, 'id': len(submissions) -1})
     return render_template_string(HTML_TEMPLATE, submissions=submissions)
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True, host="0.0.0.0", port=8800)
+    app.run(debug=True, host="0.0.0.0", port=8800)
