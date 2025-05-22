@@ -14,3 +14,9 @@ nvm current # Should print "v22.15.0".
 # Verify npm version:
 npm -v # Should print "10.9.2".
 
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Run the Flask application
+python app.py
+

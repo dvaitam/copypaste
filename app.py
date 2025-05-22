@@ -1,8 +1,10 @@
 from flask import Flask, request, render_template_string
+from flask_socketio import SocketIO
 import os
 import json
 
 app = Flask(__name__)
+socketio = SocketIO(app)
 
 # File to store submissions persistently
 DATA_FILE = "submissions.json"
@@ -32,6 +34,7 @@ HTML_TEMPLATE = """
 <html>
 <head>
     <title>copy paste</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         textarea {
@@ -100,28 +103,96 @@ HTML_TEMPLATE = """
             document.body.removeChild(textArea);
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('pre > code').forEach(function(codeBlock) {
+        function attachCopyButtonFunctionality(parentElement) {
+            var codeBlock = parentElement.querySelector('pre > code');
+            if (codeBlock) {
                 var button = document.createElement('button');
                 button.className = 'icon-button copy';
                 button.title = 'Copy';
-                button.innerHTML = '&#128203;';
+                button.innerHTML = '&#128203;'; // Copy icon
                 button.addEventListener('click', function() {
                     if (navigator.clipboard && navigator.clipboard.writeText) {
                         navigator.clipboard.writeText(codeBlock.innerText).then(function() {
-                            button.innerHTML = '&#10003;';
+                            button.innerHTML = '&#10003;'; // Checkmark icon
                             setTimeout(function() { button.innerHTML = '&#128203;'; }, 2000);
                         }).catch(function(err) {
                             console.error('Failed to copy text: ', err);
+                            // Attempt fallback for specific errors or if clipboard API is not fully supported
+                            fallbackCopyTextToClipboard(codeBlock.innerText);
+                            button.innerHTML = '&#10003;'; // Checkmark icon
+                            setTimeout(function() { button.innerHTML = '&#128203;'; }, 2000);
                         });
                     } else {
                         fallbackCopyTextToClipboard(codeBlock.innerText);
-                        button.innerHTML = '&#10003;';
+                        button.innerHTML = '&#10003;'; // Checkmark icon
                         setTimeout(function() { button.innerHTML = '&#128203;'; }, 2000);
                     }
                 });
-                var pre = codeBlock.parentNode;
-                pre.parentNode.insertBefore(button, pre);
+                var preElement = codeBlock.parentNode; // This is the <pre> element
+                // Insert the button as a sibling of the <pre> element, effectively placing it next to it.
+                // More precisely, to achieve the visual effect of the button being "on" the submission div
+                // and aligned like the delete button, it should be a direct child of `newSubmissionDiv` (or `parentElement`).
+                // The existing structure has it as `pre.parentNode.insertBefore(button, pre);`
+                // which means it's added to the parent of `pre`. If `pre` is a direct child of `submission`,
+                // then `pre.parentNode` is `submission`.
+                if (preElement.parentNode === parentElement) {
+                     parentElement.insertBefore(button, preElement); // Places button before the <pre> element
+                } else {
+                    // Fallback or error if structure is not as expected
+                    // For now, let's assume preElement.parentNode is the submission div
+                    preElement.parentNode.insertBefore(button, preElement);
+                }
+                 // To position it like the original (top right of the submission div, next to delete)
+                // it should be added directly to parentElement and styled with position:absolute.
+                // The CSS already handles .icon-button.copy { position: absolute; top: 10px; right: 40px; }
+                // So, it just needs to be a child of parentElement (the submission div).
+                parentElement.appendChild(button); // Appending as child, CSS will position it
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('#submissions .submission').forEach(function(submissionElement) {
+                attachCopyButtonFunctionality(submissionElement);
+            });
+
+            var socket = io();
+            socket.on('new_message', function(data) {
+                var submissionsDiv = document.getElementById('submissions');
+                var newSubmissionDiv = document.createElement('div');
+                newSubmissionDiv.className = 'submission';
+
+                // Add message content
+                var pre = document.createElement('pre');
+                var code = document.createElement('code');
+                code.textContent = data.message;
+                pre.appendChild(code);
+                newSubmissionDiv.appendChild(pre);
+
+                // Add delete form and button
+                var deleteForm = document.createElement('form');
+                deleteForm.method = 'POST';
+                deleteForm.action = '/';
+                deleteForm.className = 'delete-form';
+                deleteForm.style.margin = '0';
+
+                var deleteIndexInput = document.createElement('input');
+                deleteIndexInput.type = 'hidden';
+                deleteIndexInput.name = 'delete_index';
+                deleteIndexInput.value = data.id; // Use the id from the socket event
+                deleteForm.appendChild(deleteIndexInput);
+
+                var deleteButton = document.createElement('button');
+                deleteButton.type = 'submit';
+                deleteButton.className = 'icon-button delete';
+                deleteButton.title = 'Delete';
+                deleteButton.innerHTML = '&#128465;'; // Trash can icon
+                deleteForm.appendChild(deleteButton);
+                newSubmissionDiv.appendChild(deleteForm);
+
+                // Add copy button functionality
+                attachCopyButtonFunctionality(newSubmissionDiv);
+
+                submissionsDiv.insertBefore(newSubmissionDiv, submissionsDiv.firstChild);
             });
         });
     </script>
@@ -151,7 +222,8 @@ def index():
             if message:
                 submissions.append(message)
                 save_submissions()
+                socketio.emit('new_message', {'message': message, 'id': len(submissions) -1})
     return render_template_string(HTML_TEMPLATE, submissions=submissions)
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=8800)
+    socketio.run(app, debug=True, host="0.0.0.0", port=8800)

@@ -16,6 +16,7 @@ pipeline {
             steps {
                 dir('/var/lib/jenkins/copypaste') {
                     sh 'git pull origin main'
+                    sh 'source /var/lib/jenkins/app/bin/activate && pip install -r requirements.txt && deactivate'
                     sh '/bin/systemctl restart copypaste'
                 }
             }
